@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard tiến độ khảo sát BPTW 2026</title>
+<style>
+  :root {
+    --wcm-red: #C00000;
+    --wcm-peach: #FBE3D6;
+    --text: #2C2C2A;
+    --muted: #6b6b68;
+    --border: #e0ddd6;
+    --green: #1e6b3a;
+    --green-bg: #e9f5ec;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #faf9f6;
+    color: var(--text);
+    padding: 20px 16px 60px;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; color: var(--wcm-red); }
+  .updated { font-size: 12px; color: var(--muted); }
+  .refresh-btn {
+    border: 1px solid var(--wcm-red);
+    background: #fff;
+    color: var(--wcm-red);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .refresh-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+  }
+  .stat-card .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .stat-card .value { font-size: 24px; font-weight: 700; }
+  .stat-card.highlight .value { color: var(--wcm-red); }
+
+  .big-progress {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+  }
+  .big-progress .row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .bar-track {
+    background: var(--wcm-peach);
+    border-radius: 999px;
+    height: 22px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    background: var(--wcm-red);
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s ease;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    min-width: 32px;
+  }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 8px rgba(0,0,0,0.05); }
+  th, td { padding: 10px 12px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--border); }
+  th { background: var(--wcm-red); color: #fff; font-weight: 600; position: sticky; top: 0; }
+  tr.group-header td { background: var(--wcm-peach); font-weight: 700; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mini-bar-track { background: #eee; border-radius: 999px; height: 8px; width: 100%; overflow: hidden; }
+  .mini-bar-fill { background: var(--wcm-red); height: 100%; border-radius: 999px; }
+  .mini-bar-fill.done { background: var(--green); }
+
+  .state-msg { text-align: center; padding: 40px; color: var(--muted); }
+
+  #keyGate {
+    max-width: 360px;
+    margin: 80px auto;
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+  #keyGate input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  #keyGate button {
+    width: 100%;
+    padding: 10px;
+    background: var(--wcm-red);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div id="keyGate" style="display:none;">
+  <h1 style="color:var(--wcm-red);">Dashboard tiến độ khảo sát</h1>
+  <p style="font-size:13px;color:var(--muted);">Nhập mã truy cập để xem dashboard.</p>
+  <input type="password" id="keyInput" placeholder="Mã truy cập">
+  <button onclick="saveKeyAndLoad()">Xem dashboard</button>
+  <p id="keyError" style="color:#a02622;font-size:12px;"></p>
+</div>
+
+<div class="wrap" id="mainWrap" style="display:none;">
+  <div class="top">
+    <div>
+      <h1>Tiến độ hoàn thành khảo sát BPTW 2026</h1>
+      <div class="updated" id="updatedAt">Đang tải...</div>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadStats()">↻ Làm mới</button>
+  </div>
+
+  <div class="summary">
+    <div class="stat-card">
+      <div class="label">Tổng NV thuộc diện khảo sát</div>
+      <div class="value" id="sumNV">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Quota (mục tiêu)</div>
+      <div class="value" id="sumQuota">-</div>
+    </div>
+    <div class="stat-card highlight">
+      <div class="label">Đã hoàn thành (hợp lệ)</div>
+      <div class="value" id="sumDone">-</div>
+    </div>
+    <div class="stat-card highlight">
+      <div class="label">Tỷ lệ đạt quota</div>
+      <div class="value" id="sumRate">-</div>
+    </div>
+  </div>
+
+  <div class="big-progress">
+    <div class="row">
+      <span>Tiến độ toàn WCM</span>
+      <span id="bigProgressLabel">0 / 0</span>
+    </div>
+    <div class="bar-track">
+      <div class="bar-fill" id="bigProgressFill" style="width:0%">0%</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Chuỗi / Khối / Phòng</th>
+        <th class="num">Số lượng NV</th>
+        <th class="num">Quota</th>
+        <th class="num">Đã hoàn thành</th>
+        <th style="width:140px;">Tỷ lệ đạt</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr><td colspan="5" class="state-msg">Đang tải dữ liệu...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  // TODO: thay bằng URL backend thực tế sau khi deploy lên Render
+  const STATS_URL = "https://bptw-backend.onrender.com/stats";
+  const REFRESH_INTERVAL_MS = 60000; // tự làm mới mỗi 60 giây
+
+  function getStoredKey() { return sessionStorage.getItem("dashboardKey") || ""; }
+
+  function saveKeyAndLoad() {
+    const key = document.getElementById("keyInput").value.trim();
+    sessionStorage.setItem("dashboardKey", key);
+    document.getElementById("keyGate").style.display = "none";
+    document.getElementById("mainWrap").style.display = "block";
+    loadStats();
+  }
+
+  function fmt(n) { return new Intl.NumberFormat("vi-VN").format(n); }
+  function pct(x) { return (x * 100).toFixed(1) + "%"; }
+
+  async function loadStats() {
+    const btn = document.getElementById("refreshBtn");
+    btn.disabled = true;
+    btn.textContent = "Đang tải...";
+    try {
+      const key = getStoredKey();
+      const url = STATS_URL + (key ? `?key=${encodeURIComponent(key)}` : "");
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!data.ok) {
+        if (res.status === 403) {
+          document.getElementById("mainWrap").style.display = "none";
+          document.getElementById("keyGate").style.display = "block";
+          document.getElementById("keyError").textContent = data.message || "Sai mã truy cập.";
+          return;
+        }
+        document.getElementById("keyGate").style.display = "none";
+        document.getElementById("mainWrap").style.display = "block";
+        document.getElementById("tableBody").innerHTML =
+          `<tr><td colspan="5" class="state-msg">${data.message || "Có lỗi khi tải dữ liệu."}</td></tr>`;
+        return;
+      }
+
+      document.getElementById("keyGate").style.display = "none";
+      document.getElementById("mainWrap").style.display = "block";
+      document.getElementById("updatedAt").textContent = "Cập nhật lúc: " + data.cap_nhat_luc;
+      document.getElementById("sumNV").textContent = fmt(data.tong.so_luong_nv);
+      document.getElementById("sumQuota").textContent = fmt(data.tong.quota);
+      document.getElementById("sumDone").textContent = fmt(data.tong.da_hoan_thanh);
+      document.getElementById("sumRate").textContent = pct(data.tong.ty_le_thuc_hien);
+
+      const bigPct = Math.min(data.tong.ty_le_thuc_hien * 100, 100);
+      document.getElementById("bigProgressFill").style.width = bigPct + "%";
+      document.getElementById("bigProgressFill").textContent = pct(data.tong.ty_le_thuc_hien);
+      document.getElementById("bigProgressLabel").textContent =
+        `${fmt(data.tong.da_hoan_thanh)} / ${fmt(data.tong.quota)}`;
+
+      // Nhom theo Chuoi de hien thi de doc hon
+      const byChuoi = {};
+      for (const g of data.groups) {
+        if (!byChuoi[g.chuoi]) byChuoi[g.chuoi] = [];
+        byChuoi[g.chuoi].push(g);
+      }
+
+      let html = "";
+      for (const chuoi of Object.keys(byChuoi)) {
+        const rows = byChuoi[chuoi];
+        const subNV = rows.reduce((s, r) => s + r.so_luong_nv, 0);
+        const subQuota = rows.reduce((s, r) => s + r.quota, 0);
+        const subDone = rows.reduce((s, r) => s + r.da_hoan_thanh, 0);
+        const subRate = subQuota > 0 ? subDone / subQuota : 0;
+        html += `<tr class="group-header">
+          <td>${chuoi}</td>
+          <td class="num">${fmt(subNV)}</td>
+          <td class="num">${fmt(subQuota)}</td>
+          <td class="num">${fmt(subDone)}</td>
+          <td>${pct(subRate)}</td>
+        </tr>`;
+        for (const g of rows) {
+          const p = Math.min(g.ty_le_thuc_hien * 100, 100);
+          const done = g.ty_le_thuc_hien >= 1;
+          html += `<tr>
+            <td style="padding-left:24px;">${g.khoi}</td>
+            <td class="num">${fmt(g.so_luong_nv)}</td>
+            <td class="num">${fmt(g.quota)}</td>
+            <td class="num">${fmt(g.da_hoan_thanh)}</td>
+            <td>
+              <div class="mini-bar-track">
+                <div class="mini-bar-fill ${done ? 'done' : ''}" style="width:${p}%"></div>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">${pct(g.ty_le_thuc_hien)}</div>
+            </td>
+          </tr>`;
+        }
+      }
+      document.getElementById("tableBody").innerHTML = html || `<tr><td colspan="5" class="state-msg">Chưa có dữ liệu.</td></tr>`;
+    } catch (e) {
+      document.getElementById("tableBody").innerHTML =
+        `<tr><td colspan="5" class="state-msg">Không kết nối được máy chủ.</td></tr>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "↻ Làm mới";
+    }
+  }
+
+  // Khoi dong: goi thu /stats. Neu backend yeu cau key (403) se tu chuyen sang man hinh nhap key,
+  // neu khong thi hien dashboard luon.
+  loadStats();
+  setInterval(loadStats, REFRESH_INTERVAL_MS);
+</script>
+</body>
+</html>

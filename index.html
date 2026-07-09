@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Báo cáo hoàn thành khảo sát BPTW 2026</title>
+<style>
+  :root {
+    --wcm-red: #C00000;
+    --wcm-peach: #FBE3D6;
+    --text: #2C2C2A;
+    --muted: #6b6b68;
+    --border: #e0ddd6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #faf9f6;
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .card {
+    width: 100%;
+    max-width: 480px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  .header {
+    background: var(--wcm-red);
+    color: #fff;
+    padding: 24px 24px 20px;
+  }
+  .header h1 {
+    font-size: 18px;
+    margin: 0 0 6px;
+    font-weight: 700;
+  }
+  .header p {
+    margin: 0;
+    font-size: 13px;
+    opacity: 0.9;
+    line-height: 1.5;
+  }
+  form { padding: 24px; }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    margin-top: 18px;
+  }
+  label:first-of-type { margin-top: 0; }
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--wcm-red); }
+  .file-drop {
+    margin-top: 6px;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--wcm-peach);
+  }
+  .file-drop.has-image { padding: 8px; }
+  .file-drop input { display: none; }
+  .file-drop-text { font-size: 13px; color: var(--muted); }
+  #preview {
+    display: none;
+    max-width: 100%;
+    max-height: 260px;
+    border-radius: 8px;
+    margin: 0 auto;
+  }
+  button {
+    width: 100%;
+    margin-top: 24px;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: var(--wcm-red);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  .note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+  #result {
+    display: none;
+    margin: 0 24px 24px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  #result.ok { background: #e9f5ec; color: #1e6b3a; }
+  #result.warn { background: #fff4e0; color: #8a5a00; }
+  #result.err { background: #fdecea; color: #a02622; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <h1>Báo cáo hoàn thành khảo sát BPTW 2026</h1>
+    <p>Chụp màn hình <b>đúng bước bạn nhập email</b> trong khảo sát (không phải màn hình cảm ơn), sau đó điền thông tin và nộp ảnh bên dưới.</p>
+  </div>
+  <form id="reportForm">
+    <label for="msnv">Mã số nhân viên (MSNV)</label>
+    <input type="text" id="msnv" name="msnv" placeholder="VD: 300486" required inputmode="numeric">
+    <div id="msnvHint" style="font-size:14px; margin-top:8px; min-height:20px; font-weight:600;"></div>
+
+    <label>Ảnh chụp màn hình <u>bước nhập email</u> (không phải màn hình cảm ơn)</label>
+    <div class="file-drop" id="fileDrop">
+      <input type="file" id="anh" name="anh" accept="image/*" required>
+      <img id="preview" alt="Xem trước ảnh đã chọn">
+      <div class="file-drop-text" id="fileDropText">Nhấn để chọn ảnh từ máy</div>
+    </div>
+
+    <button type="submit" id="submitBtn">Gửi báo cáo</button>
+    <p class="note">Mỗi MSNV chỉ được ghi nhận 1 lần. Hệ thống tự động kiểm tra ảnh trùng lặp.</p>
+  </form>
+  <div id="result"></div>
+</div>
+
+<script>
+  // TODO: thay bằng URL backend thực tế sau khi deploy lên Render
+  const API_URL = "https://bptw-backend.onrender.com/submit";
+  const LOOKUP_URL = "https://bptw-backend.onrender.com/lookup";
+
+  // Tự động tra tên (đã che 1 phần) khi nhập MSNV, có debounce để không gọi API liên tục
+  const msnvInput = document.getElementById("msnv");
+  const msnvHint = document.getElementById("msnvHint");
+  let lookupTimer = null;
+  let msnvVerified = false;
+  updateSubmitState();
+
+  msnvInput.addEventListener("input", () => {
+    clearTimeout(lookupTimer);
+    msnvVerified = false;
+    updateSubmitState();
+    const msnv = msnvInput.value.trim();
+    msnvHint.textContent = "";
+    msnvHint.style.color = "";
+    if (!msnv) return;
+    msnvHint.textContent = "Đang tra cứu...";
+    msnvHint.style.color = "#6b6b68";
+    lookupTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${LOOKUP_URL}?msnv=${encodeURIComponent(msnv)}`);
+        const data = await res.json();
+        if (data.ok) {
+          msnvHint.textContent = `✓ ${data.hoTen}`;
+          msnvHint.style.color = "#1e6b3a";
+          msnvVerified = true;
+        } else {
+          msnvHint.textContent = "Không tìm thấy MSNV, vui lòng kiểm tra lại.";
+          msnvHint.style.color = "#a02622";
+          msnvVerified = false;
+        }
+      } catch (e) {
+        msnvHint.textContent = "Không tra cứu được, vui lòng thử lại.";
+        msnvHint.style.color = "#a02622";
+        msnvVerified = false;
+      }
+      updateSubmitState();
+    }, 500);
+  });
+
+  function updateSubmitState() {
+    submitBtnRef().disabled = !msnvVerified;
+  }
+  function submitBtnRef() { return document.getElementById("submitBtn"); }
+
+  const fileDrop = document.getElementById("fileDrop");
+  const fileInput = document.getElementById("anh");
+  const preview = document.getElementById("preview");
+  const fileDropText = document.getElementById("fileDropText");
+
+  fileDrop.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      preview.src = e.target.result;
+      preview.style.display = "block";
+      fileDrop.classList.add("has-image");
+      fileDropText.textContent = file.name;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const form = document.getElementById("reportForm");
+  const submitBtn = document.getElementById("submitBtn");
+  const resultBox = document.getElementById("result");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!msnvVerified) {
+      resultBox.style.display = "block";
+      resultBox.className = "err";
+      resultBox.textContent = "Vui lòng nhập đúng MSNV và chờ hệ thống xác nhận tên trước khi gửi.";
+      return;
+    }
+    resultBox.style.display = "none";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Đang xử lý...";
+
+    const formData = new FormData();
+    formData.append("msnv", document.getElementById("msnv").value.trim());
+    formData.append("anh", fileInput.files[0]);
+
+    try {
+      const res = await fetch(API_URL, { method: "POST", body: formData });
+      const data = await res.json();
+
+      resultBox.style.display = "block";
+      if (!data.ok) {
+        resultBox.className = "err";
+        resultBox.textContent = data.message || "Có lỗi xảy ra, vui lòng thử lại.";
+      } else if (data.status === "hop_le") {
+        resultBox.className = "ok";
+        resultBox.textContent = data.message;
+        form.reset();
+        preview.style.display = "none";
+        fileDrop.classList.remove("has-image");
+        fileDropText.textContent = "Nhấn để chọn ảnh từ máy";
+        msnvHint.textContent = "";
+        msnvVerified = false;
+      } else {
+        resultBox.className = "warn";
+        resultBox.textContent = data.message;
+      }
+    } catch (err) {
+      resultBox.style.display = "block";
+      resultBox.className = "err";
+      resultBox.textContent = "Không kết nối được máy chủ. Vui lòng kiểm tra mạng và thử lại.";
+    } finally {
+      submitBtn.disabled = !msnvVerified;
+      submitBtn.textContent = "Gửi báo cáo";
+    }
+  });
+</script>
+</body>
+</html>
