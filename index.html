@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Báo cáo hoàn thành khảo sát BPTW 2026</title>
+<title>Báo cáo hoàn thành khảo sát Nơi làm việc tốt nhất Việt Nam® 2026</title>
 <style>
   :root {
     --wcm-red: #C00000;
@@ -118,7 +118,7 @@
 <body>
 <div class="card">
   <div class="header">
-    <h1>Báo cáo hoàn thành khảo sát BPTW 2026</h1>
+    <h1>Báo cáo hoàn thành khảo sát Nơi làm việc tốt nhất Việt Nam® 2026</h1>
     <p>Chụp màn hình <b>đúng bước bạn nhập email</b> trong khảo sát (không phải màn hình cảm ơn), sau đó điền thông tin và nộp ảnh bên dưới.</p>
   </div>
   <form id="reportForm">
@@ -137,6 +137,15 @@
     <p class="note">Mỗi MSNV chỉ được ghi nhận 1 lần. Hệ thống tự động kiểm tra ảnh trùng lặp.</p>
   </form>
   <div id="result"></div>
+
+  <div id="thankYouScreen" style="display:none; padding:32px 24px; text-align:center;">
+    <div style="font-size:40px; margin-bottom:12px;">🙏</div>
+    <p style="font-size:15px; line-height:1.7; color:var(--text); margin:0;">
+      Xin cảm ơn Người Win đã dành thời gian đóng góp tiếng nói của mình cho Khảo sát Nơi làm việc tốt nhất Việt Nam® 2026.
+      Chính những chia sẻ chân thực của mỗi người sẽ góp phần tạo nên một bức tranh khách quan về môi trường làm việc tại
+      WinCommerce cũng như thị trường lao động Việt Nam.
+    </p>
+  </div>
 </div>
 
 <script>
@@ -236,14 +245,10 @@
         resultBox.className = "err";
         resultBox.textContent = data.message || "Có lỗi xảy ra, vui lòng thử lại.";
       } else if (data.status === "hop_le") {
-        resultBox.className = "ok";
-        resultBox.textContent = data.message;
-        form.reset();
-        preview.style.display = "none";
-        fileDrop.classList.remove("has-image");
-        fileDropText.textContent = "Nhấn để chọn ảnh từ máy";
-        msnvHint.textContent = "";
-        msnvVerified = false;
+        document.querySelector(".header").style.display = "none";
+        form.style.display = "none";
+        resultBox.style.display = "none";
+        document.getElementById("thankYouScreen").style.display = "block";
       } else {
         resultBox.className = "warn";
         resultBox.textContent = data.message;
