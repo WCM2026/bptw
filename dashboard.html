@@ -181,6 +181,21 @@
     </div>
   </div>
 
+  <div class="summary">
+    <div class="stat-card">
+      <div class="label">✓ Hợp lệ</div>
+      <div class="value" id="sumHopLe" style="color:var(--green);">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">◐ Nghi vấn — được tính</div>
+      <div class="value" id="sumNghiVanTinh" style="color:#8a5a00;">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">✕ Không hợp lệ — chưa tính</div>
+      <div class="value" id="sumKhongHopLe" style="color:var(--wcm-red);">-</div>
+    </div>
+  </div>
+
   <div class="big-progress">
     <div class="row">
       <span>Tiến độ toàn WCM</span>
@@ -302,6 +317,11 @@
       document.getElementById("sumQuota").textContent = fmt(data.tong.quota);
       document.getElementById("sumDone").textContent = fmt(data.tong.da_hoan_thanh);
       document.getElementById("sumRate").textContent = pct(data.tong.ty_le_thuc_hien);
+
+      const ct = data.chi_tiet_trang_thai || { hop_le: 0, nghi_van_tinh: 0, khong_hop_le: 0 };
+      document.getElementById("sumHopLe").textContent = fmt(ct.hop_le);
+      document.getElementById("sumNghiVanTinh").textContent = fmt(ct.nghi_van_tinh);
+      document.getElementById("sumKhongHopLe").textContent = fmt(ct.khong_hop_le);
 
       const bigPct = Math.min(data.tong.ty_le_thuc_hien * 100, 100);
       document.getElementById("bigProgressFill").style.width = bigPct + "%";
