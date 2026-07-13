@@ -105,6 +105,13 @@
   .mini-bar-fill { background: var(--wcm-red); height: 100%; border-radius: 999px; }
   .mini-bar-fill.done { background: var(--green); }
 
+  tr.khoi-row { cursor: pointer; }
+  tr.khoi-row:hover { background: #faf6f2; }
+  tr.khoi-row .caret { display: inline-block; width: 14px; font-size: 11px; color: var(--muted); transition: transform 0.15s ease; }
+  tr.khoi-row.expanded .caret { transform: rotate(90deg); }
+  tr.nhom-row td { font-size: 12px; color: var(--muted); }
+  tr.nhom-row td:first-child { padding-left: 48px; }
+
   .state-msg { text-align: center; padding: 40px; color: var(--muted); }
 
   #keyGate {
@@ -178,21 +185,6 @@
     <div class="stat-card highlight">
       <div class="label">Tỷ lệ đạt quota</div>
       <div class="value" id="sumRate">-</div>
-    </div>
-  </div>
-
-  <div class="summary">
-    <div class="stat-card">
-      <div class="label">✓ Hợp lệ</div>
-      <div class="value" id="sumHopLe" style="color:var(--green);">-</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">◐ Nghi vấn — được tính</div>
-      <div class="value" id="sumNghiVanTinh" style="color:#8a5a00;">-</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">✕ Không hợp lệ — chưa tính</div>
-      <div class="value" id="sumKhongHopLe" style="color:var(--wcm-red);">-</div>
     </div>
   </div>
 
@@ -283,6 +275,15 @@
   function fmt(n) { return new Intl.NumberFormat("vi-VN").format(n); }
   function pct(x) { return (x * 100).toFixed(1) + "%"; }
 
+  function toggleKhoiRow(rowId) {
+    const khoiTr = document.querySelector(`tr.khoi-row[data-target="${rowId}"]`);
+    const subRows = document.querySelectorAll(`tr.nhom-row.${rowId}`);
+    const expanding = khoiTr.classList.toggle("expanded");
+    subRows.forEach(tr => { tr.style.display = expanding ? "table-row" : "none"; });
+    const caret = khoiTr.querySelector(".caret");
+    if (caret) caret.textContent = expanding ? "▼" : "▶";
+  }
+
   async function loadStats() {
     const btn = document.getElementById("refreshBtn");
     btn.disabled = true;
@@ -318,11 +319,6 @@
       document.getElementById("sumDone").textContent = fmt(data.tong.da_hoan_thanh);
       document.getElementById("sumRate").textContent = pct(data.tong.ty_le_thuc_hien);
 
-      const ct = data.chi_tiet_trang_thai || { hop_le: 0, nghi_van_tinh: 0, khong_hop_le: 0 };
-      document.getElementById("sumHopLe").textContent = fmt(ct.hop_le);
-      document.getElementById("sumNghiVanTinh").textContent = fmt(ct.nghi_van_tinh);
-      document.getElementById("sumKhongHopLe").textContent = fmt(ct.khong_hop_le);
-
       const bigPct = Math.min(data.tong.ty_le_thuc_hien * 100, 100);
       document.getElementById("bigProgressFill").style.width = bigPct + "%";
       document.getElementById("bigProgressFill").textContent = pct(data.tong.ty_le_thuc_hien);
@@ -337,6 +333,7 @@
       }
 
       let html = "";
+      let khoiRowIdx = 0;
       for (const chuoi of Object.keys(byChuoi)) {
         const rows = byChuoi[chuoi];
         const subNV = rows.reduce((s, r) => s + r.so_luong_nv, 0);
@@ -353,8 +350,10 @@
         for (const g of rows) {
           const p = Math.min(g.ty_le_thuc_hien * 100, 100);
           const done = g.ty_le_thuc_hien >= 1;
-          html += `<tr>
-            <td style="padding-left:24px;">${g.khoi}</td>
+          const hasSub = g.sub_groups && g.sub_groups.length > 0;
+          const rowId = `khoi-${khoiRowIdx++}`;
+          html += `<tr class="khoi-row" data-target="${rowId}" ${hasSub ? `onclick="toggleKhoiRow('${rowId}')"` : ""}>
+            <td style="padding-left:24px;">${hasSub ? `<span class="caret">▶</span>` : `<span class="caret"></span>`}${g.khoi}</td>
             <td class="num">${fmt(g.so_luong_nv)}</td>
             <td class="num">${fmt(g.quota)}</td>
             <td class="num">${fmt(g.da_hoan_thanh)}</td>
@@ -365,6 +364,24 @@
               <div style="font-size:11px;color:var(--muted);margin-top:2px;">${pct(g.ty_le_thuc_hien)}</div>
             </td>
           </tr>`;
+          if (hasSub) {
+            for (const sg of g.sub_groups) {
+              const sp = Math.min(sg.ty_le_thuc_hien * 100, 100);
+              const sdone = sg.ty_le_thuc_hien >= 1;
+              html += `<tr class="nhom-row ${rowId}" style="display:none;">
+                <td>${sg.nhom}</td>
+                <td class="num">${fmt(sg.so_luong_nv)}</td>
+                <td class="num">${fmt(sg.quota)}</td>
+                <td class="num">${fmt(sg.da_hoan_thanh)}</td>
+                <td>
+                  <div class="mini-bar-track">
+                    <div class="mini-bar-fill ${sdone ? 'done' : ''}" style="width:${sp}%"></div>
+                  </div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:2px;">${pct(sg.ty_le_thuc_hien)}</div>
+                </td>
+              </tr>`;
+            }
+          }
         }
       }
       document.getElementById("tableBody").innerHTML = html || `<tr><td colspan="5" class="state-msg">Chưa có dữ liệu.</td></tr>`;
