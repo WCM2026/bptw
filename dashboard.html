@@ -181,6 +181,7 @@
     <div class="stat-card highlight">
       <div class="label">Đã hoàn thành (hợp lệ + nghi vấn)</div>
       <div class="value" id="sumDone">-</div>
+      <div id="sumDoneBreakdown" style="font-size:12px; color:var(--muted); margin-top:4px;"></div>
     </div>
     <div class="stat-card highlight">
       <div class="label">Tỷ lệ đạt quota</div>
@@ -317,6 +318,8 @@
       document.getElementById("sumNV").textContent = fmt(data.tong.so_luong_nv);
       document.getElementById("sumQuota").textContent = fmt(data.tong.quota);
       document.getElementById("sumDone").textContent = fmt(data.tong.da_hoan_thanh);
+      document.getElementById("sumDoneBreakdown").textContent =
+        `Hợp lệ: ${fmt(data.tong.hop_le)} · Nghi vấn: ${fmt(data.tong.nghi_van)}`;
       document.getElementById("sumRate").textContent = pct(data.tong.ty_le_thuc_hien);
 
       const bigPct = Math.min(data.tong.ty_le_thuc_hien * 100, 100);
