@@ -123,7 +123,10 @@
   </div>
   <form id="reportForm">
     <label for="msnv">Mã số nhân viên (MSNV)</label>
-    <input type="text" id="msnv" name="msnv" placeholder="VD: 300486" required inputmode="numeric">
+    <div style="display:flex; gap:8px;">
+      <input type="text" id="msnv" name="msnv" placeholder="VD: 300486" required inputmode="numeric" style="flex:1;">
+      <button type="button" id="lookupBtn" style="width:auto; margin-top:0; padding:0 18px; white-space:nowrap;">Tra cứu</button>
+    </div>
     <div id="msnvHint" style="font-size:14px; margin-top:8px; min-height:20px; font-weight:600;"></div>
 
     <label>Ảnh chụp màn hình <u>bước nhập email</u> (không phải màn hình cảm ơn)</label>
@@ -159,44 +162,68 @@
   const API_URL = "https://bptw-backend.onrender.com/submit";
   const LOOKUP_URL = "https://bptw-backend.onrender.com/lookup";
 
-  // Tự động tra tên (đã che 1 phần) khi nhập MSNV, có debounce để không gọi API liên tục
+  // Tra tên (đã che 1 phần) theo MSNV: chỉ tra khi bấm nút "Tra cứu" hoặc nhấn Enter,
+  // không tự động gọi API mỗi khi gõ để giảm số lần gọi /lookup.
   const msnvInput = document.getElementById("msnv");
   const msnvHint = document.getElementById("msnvHint");
-  let lookupTimer = null;
+  const lookupBtn = document.getElementById("lookupBtn");
   let msnvVerified = false;
   updateSubmitState();
 
+  // Gõ lại MSNV sau khi đã tra cứu -> coi như chưa xác thực, phải bấm Tra cứu lại
   msnvInput.addEventListener("input", () => {
-    clearTimeout(lookupTimer);
+    if (msnvVerified) {
+      msnvVerified = false;
+      msnvHint.textContent = "";
+      msnvHint.style.color = "";
+      updateSubmitState();
+    }
+  });
+
+  msnvInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      doLookup();
+    }
+  });
+
+  lookupBtn.addEventListener("click", doLookup);
+
+  async function doLookup() {
+    const msnv = msnvInput.value.trim();
     msnvVerified = false;
     updateSubmitState();
-    const msnv = msnvInput.value.trim();
-    msnvHint.textContent = "";
-    msnvHint.style.color = "";
-    if (!msnv) return;
+    if (!msnv) {
+      msnvHint.textContent = "Vui lòng nhập MSNV trước.";
+      msnvHint.style.color = "#a02622";
+      return;
+    }
+    lookupBtn.disabled = true;
+    lookupBtn.textContent = "Đang tra...";
     msnvHint.textContent = "Đang tra cứu...";
     msnvHint.style.color = "#6b6b68";
-    lookupTimer = setTimeout(async () => {
-      try {
-        const res = await fetch(`${LOOKUP_URL}?msnv=${encodeURIComponent(msnv)}`);
-        const data = await res.json();
-        if (data.ok) {
-          msnvHint.textContent = `✓ ${data.hoTen}`;
-          msnvHint.style.color = "#1e6b3a";
-          msnvVerified = true;
-        } else {
-          msnvHint.textContent = "Không tìm thấy MSNV, vui lòng kiểm tra lại.";
-          msnvHint.style.color = "#a02622";
-          msnvVerified = false;
-        }
-      } catch (e) {
-        msnvHint.textContent = "Không tra cứu được, vui lòng thử lại.";
+    try {
+      const res = await fetch(`${LOOKUP_URL}?msnv=${encodeURIComponent(msnv)}`);
+      const data = await res.json();
+      if (data.ok) {
+        msnvHint.textContent = `✓ ${data.hoTen}`;
+        msnvHint.style.color = "#1e6b3a";
+        msnvVerified = true;
+      } else {
+        msnvHint.textContent = data.message || "Không tìm thấy MSNV, vui lòng kiểm tra lại.";
         msnvHint.style.color = "#a02622";
         msnvVerified = false;
       }
+    } catch (e) {
+      msnvHint.textContent = "Không tra cứu được, vui lòng thử lại.";
+      msnvHint.style.color = "#a02622";
+      msnvVerified = false;
+    } finally {
+      lookupBtn.disabled = false;
+      lookupBtn.textContent = "Tra cứu";
       updateSubmitState();
-    }, 500);
-  });
+    }
+  }
 
   function updateSubmitState() {
     submitBtnRef().disabled = !msnvVerified;
