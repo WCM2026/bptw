@@ -155,7 +155,24 @@
       WinCommerce cũng như thị trường lao động Việt Nam.
     </p>
   </div>
+
+  <div id="pendingScreen" style="display:none; padding:32px 24px; text-align:center;">
+    <div style="font-size:13px; font-weight:800; letter-spacing:2px; color:#8a5a00; margin-bottom:10px;">ĐÃ GHI NHẬN</div>
+    <div style="margin-bottom:16px;">
+      <svg width="52" height="52" viewBox="0 0 52 52" style="display:inline-block;">
+        <circle cx="26" cy="26" r="25" fill="#c67f00"/>
+        <rect x="24" y="14" width="4" height="18" rx="2" fill="#ffffff"/>
+        <circle cx="26" cy="37" r="2.5" fill="#ffffff"/>
+      </svg>
+    </div>
+    <p style="font-size:15px; line-height:1.7; color:var(--text); margin:0 0 12px;">
+      Cảm ơn Người Win đã tham gia Khảo sát Nơi làm việc tốt nhất Việt Nam® 2026. Báo cáo của bạn <b>đã được ghi nhận thành công</b>,
+      bạn <b>không cần nộp lại</b>. Hệ thống chỉ cần xác minh thêm một chút thông tin trước khi hoàn tất.
+    </p>
+    <p id="pendingReason" style="font-size:13px; line-height:1.6; color:#8a5a00; background:#fff4e0; border-radius:8px; padding:10px 14px; margin:0;"></p>
+  </div>
 </div>
+
 
 <script>
   // TODO: thay bằng URL backend thực tế sau khi deploy lên Render
@@ -283,8 +300,12 @@
         resultBox.style.display = "none";
         document.getElementById("thankYouScreen").style.display = "block";
       } else {
-        resultBox.className = "warn";
-        resultBox.textContent = data.message;
+        // "nghi_van": bao cao DA duoc ghi nhan, chi can xac minh them - khong hien nhu 1 loi
+        document.querySelector(".header").style.display = "none";
+        form.style.display = "none";
+        resultBox.style.display = "none";
+        document.getElementById("pendingReason").textContent = data.message || "";
+        document.getElementById("pendingScreen").style.display = "block";
       }
     } catch (err) {
       resultBox.style.display = "block";
